@@ -10,6 +10,7 @@ import com.ijunhai.model.parsers.ResultParser;
 import com.ijunhai.model.parsers.SqlParser;
 import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.DateTime;
+import org.joda.time.Days;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
@@ -77,7 +78,7 @@ public class ModelProcessor {
         DateTimeFormatter format = DateTimeFormat.forPattern("yyyy-MM-dd");
         DateTime startTime = format.parseDateTime(model.getConditions().getStart().split(" ")[0]);
         DateTime endTime = format.parseDateTime(model.getConditions().getEnd().split(" ")[0]);
-        String startDate =startTime.toString("yyyy-MM-dd");
+        String startDate = startTime.toString("yyyy-MM-dd");
         String endDate = endTime.toString("yyyy-MM-dd");
 
 
@@ -92,64 +93,77 @@ public class ModelProcessor {
         }
         //kylin
         //计算1日前的2留，2日前的3留
-        HashMap<DateTime,Integer> computeMap = new HashMap<>();
-        if (endTime.compareTo(startOfDay) == 0 && startTime.compareTo(startOfDay.minusDays(7)) == 1  ) {
-            List<Integer> yet = Arrays.asList(1,2,3,4,5,6);
-            List<Integer> ret = Arrays.asList(2,3,4,5,6,7);
-            if(valuesList.containsAll(yet) || valuesList.containsAll(ret)){
+        HashMap<DateTime, Integer> computeMap = new HashMap<>();
+        if (endTime.compareTo(startOfDay) == 0 && startTime.compareTo(startOfDay.minusDays(7)) == 1) {
+            List<Integer> yet = Arrays.asList(1, 2, 3, 4, 5, 6);
+            List<Integer> ret = Arrays.asList(2, 3, 4, 5, 6, 7);
+            if (valuesList.containsAll(yet) || valuesList.containsAll(ret)) {
                 DateTime today = new DateTime().withTimeAtStartOfDay();
                 switch (metricName) {
                     case "complex_yet_pay_nuv":
-                        metric = new OrderYetPayNuv(startDate,endDate, 0);
+                        metric = new OrderYetPayNuv(startDate, endDate, 0);
                         break;
                     case "complex_nu_yet_pay_amount":
-                        metric = new OrderNuYetPayAmount(startDate,endDate, 0);
+                        metric = new OrderNuYetPayAmount(startDate, endDate, 0);
                         break;
                     case "complex_retention_uv":
-                        metric = new LoginRetentionUv(startDate,endTime);
+                        metric = new LoginRetentionUv(startDate, endTime);
                         break;
                     case "complex_first_pay_retention_nuv":
-                        metric = new LoginFirstPayRetentionNuv(startDate,endTime);
+                        metric = new LoginFirstPayRetentionNuv(startDate, endTime);
                         break;
                     case "complex_first_pay_retention_uv":
-                        metric = new LoginFirstPayRetentionUv(startDate,endTime);
+                        metric = new LoginFirstPayRetentionUv(startDate, endTime);
                         break;
                 }
-                buildSql(metric,KYLIN);
-            }
+                buildSql(metric, KYLIN);
+            } else {
+                for (int days : valuesList) {
+                    int d = Days.daysBetween(startTime, endTime).getDays();
+                    if (d + 1 < days) {
+                        continue;
+                    }
+                    computeMap.put(endTime.minusDays(days - 1), days);
+                }
 
+                for (Map.Entry<DateTime, Integer> e : computeMap.entrySet()) {
+                    Integer value = e.getValue();
+                    String key = e.getKey().toString("yyyy-MM-dd");
+                    switch(metricName){
+                        //留存kylin算到7日
+                    }
+                }
+            }
 
 
         }
 
     }
 
-    public void buildSql(Metric metric,DaoType type) throws Exception {
+    public void buildSql(Metric metric, DaoType type) throws Exception {
         metricNameLists.add(metric.getName());
         String time = granularity == null ? "" : granularity;
-        if(metric.getFuction(MYSQL) != null && !time.equals("hour") && time.equals("minute")){
-            sqlList.add(Pair.of(MYSQL,build(new MysqlParser(model,metric))));
+        if (metric.getFuction(MYSQL) != null && !time.equals("hour") && time.equals("minute")) {
+            sqlList.add(Pair.of(MYSQL, build(new MysqlParser(model, metric))));
         }
 
-        if(longMetric.contains(metric.getName())){
+        if (longMetric.contains(metric.getName())) {
             //startTime大于当前日期(startOfDay-7) 且 endTime大于startOfDay则查ky实时数据
-            if(type.equals(KYLIN)){
-                sqlList.add(Pair.of(KYLIN,build(new KylinParser(model,metric))));
+            if (type.equals(KYLIN)) {
+                sqlList.add(Pair.of(KYLIN, build(new KylinParser(model, metric))));
             }
         }
-
-
 
 
     }
 
     private String build(SqlParser sqlParser) throws Exception {
         sqlParser.build();
-        String sql = sqlParser.getSelectSQL()+sqlParser.getTableName()+sqlParser.getWhereSQL()+sqlParser.getGroupBySql();
+        String sql = sqlParser.getSelectSQL() + sqlParser.getTableName() + sqlParser.getWhereSQL() + sqlParser.getGroupBySql();
         //添加大蓝海外数据
         String sql1 = sql;
-        if(sqlParser.getTableName().contains("rpt") && !sqlParser.getTableName().contains("import") ){
-            addDLHW(Pair.of(sqlParser.getTableName(),sql1));
+        if (sqlParser.getTableName().contains("rpt") && !sqlParser.getTableName().contains("import")) {
+            addDLHW(Pair.of(sqlParser.getTableName(), sql1));
         }
         return sql;
 

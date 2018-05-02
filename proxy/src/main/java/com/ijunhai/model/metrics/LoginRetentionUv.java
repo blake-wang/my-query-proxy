@@ -18,6 +18,8 @@ public class LoginRetentionUv implements Metric {
     private LocalDate regLocalDate;
     @JsonProperty
     private List<Integer> values;
+    @JsonIgnore
+    private DateTime serverDate;
 
     public LoginRetentionUv() {
 
@@ -35,6 +37,10 @@ public class LoginRetentionUv implements Metric {
         this.values = values;
     }
 
+    public LoginRetentionUv(String regDate, DateTime serverDate) {
+        this.regDate = regDate;
+        this.serverDate = serverDate;
+    }
 
 
     @Override

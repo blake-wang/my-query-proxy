@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ijunhai.dao.DaoType;
+import org.joda.time.DateTime;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,6 +19,8 @@ public class LoginFirstPayRetentionNuv implements Metric {
     private LocalDate regLocalDate;
     @JsonProperty
     private List<Integer> values;
+    @JsonProperty
+    private DateTime serverDate;
 
     public LoginFirstPayRetentionNuv() {
     }
@@ -37,6 +40,13 @@ public class LoginFirstPayRetentionNuv implements Metric {
             @JsonProperty("values") List<Integer> values
     ) {
         this.values = values;
+    }
+
+    public LoginFirstPayRetentionNuv(
+            @JsonProperty("regDate") String regDate,
+            @JsonProperty("serverDate") DateTime serverDate) {
+        this.regDate = regDate;
+        this.serverDate = serverDate;
     }
 
     @Override

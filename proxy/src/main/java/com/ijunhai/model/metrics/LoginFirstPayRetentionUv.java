@@ -4,12 +4,15 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ijunhai.dao.DaoType;
+import org.joda.time.DateTime;
 
 import java.time.LocalDate;
 import java.util.List;
 
 public class LoginFirstPayRetentionUv implements Metric {
     public static String NAME = "first_pay_retention_uv";
+    @JsonProperty
+    private DateTime serverDate;
     @JsonProperty
     private String firstPayDate;
     @JsonIgnore
@@ -36,6 +39,14 @@ public class LoginFirstPayRetentionUv implements Metric {
             @JsonProperty("values") List<Integer> values
     ) {
         this.values = values;
+    }
+
+    public LoginFirstPayRetentionUv(
+            @JsonProperty("regDate") String regDate,
+            @JsonProperty("serverDate") DateTime serverDate) {
+        this.firstPayDate = regDate;
+        this.serverDate = serverDate;
+
     }
 
 
