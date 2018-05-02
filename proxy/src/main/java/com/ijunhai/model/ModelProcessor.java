@@ -118,6 +118,7 @@ public class ModelProcessor {
         if(metric.getFuction(MYSQL) != null && !time.equals("hour") && time.equals("minute")){
             sqlList.add(Pair.of(MYSQL,build(new MysqlParser(model,metric))));
         }
+        //TODO 代码写到这里了  8:25
 
     }
 
@@ -135,6 +136,6 @@ public class ModelProcessor {
 
     private void addDLHW(Pair<String, String> pair) {
 
-        
+
     }
 }
