@@ -129,13 +129,35 @@ public class ModelProcessor {
                 for (Map.Entry<DateTime, Integer> e : computeMap.entrySet()) {
                     Integer value = e.getValue();
                     String key = e.getKey().toString("yyyy-MM-dd");
-                    switch(metricName){
+                    switch (metricName) {
                         //留存kylin算到7日
+                        case "complex_retention_uv":
+                            metric = new LoginRetentionUv(key, new ArrayList<Integer>() {{
+                                add(value);
+                            }});
+                            break;
+                        case "complex_first_pay_retention_nuv":
+                            metric = new LoginFirstPayRetentionNuv(key, new ArrayList<Integer>() {
+                                {
+                                    add(value);
+                                }
+                            });
+                            break;
+                        //Ltv实时算到6日
+                        case "complex_first_pay_retention_uv":
+                            metric = new LoginFirstPayRetentionUv(key, new ArrayList<Integer>() {{
+                                add(value);
+                            }});
+                            break;
+                        case "complex_nu_yet_pay_amount":
+                            if (value == 7) {
+                                continue;
+                            }
+                            metric = new OrderNuYetPayAmount(e.getKey().minusDays(1).toString("yyyy-MM-dd"), endTime.toString("yyyy-MM-dd"), value);
+
                     }
                 }
             }
-
-
         }
 
     }
