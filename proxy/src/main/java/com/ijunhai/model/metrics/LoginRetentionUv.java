@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ijunhai.dao.DaoType;
+import org.joda.time.DateTime;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -33,6 +34,7 @@ public class LoginRetentionUv implements Metric {
     public LoginRetentionUv(@JsonProperty("values") List<Integer> values) {
         this.values = values;
     }
+
 
 
     @Override

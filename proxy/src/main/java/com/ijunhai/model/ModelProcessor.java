@@ -4,6 +4,7 @@ import com.ijunhai.dao.DaoType;
 import com.ijunhai.dao.MysqlDao;
 import com.ijunhai.dao.ParallelDao;
 import com.ijunhai.model.metrics.*;
+import com.ijunhai.model.parsers.KylinParser;
 import com.ijunhai.model.parsers.MysqlParser;
 import com.ijunhai.model.parsers.ResultParser;
 import com.ijunhai.model.parsers.SqlParser;
@@ -12,10 +13,10 @@ import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import static com.ijunhai.constant.ProxyConstants.longMetric;
+import static com.ijunhai.dao.DaoType.KYLIN;
 import static com.ijunhai.dao.DaoType.MYSQL;
 
 public class ModelProcessor {
@@ -58,11 +59,12 @@ public class ModelProcessor {
 
     }
 
-    public List<Map<String, String>> process() {
+    public List<Map<String, String>> process() throws Exception {
         for (Metric metric : metricList) {
             String metricName = metric.getName();
             if (metricName.contains("complex")) {
                 complexMetric(metric);
+                continue;
             }
         }
 
@@ -75,6 +77,10 @@ public class ModelProcessor {
         DateTimeFormatter format = DateTimeFormat.forPattern("yyyy-MM-dd");
         DateTime startTime = format.parseDateTime(model.getConditions().getStart().split(" ")[0]);
         DateTime endTime = format.parseDateTime(model.getConditions().getEnd().split(" ")[0]);
+        String startDate =startTime.toString("yyyy-MM-dd");
+        String endDate = endTime.toString("yyyy-MM-dd");
+
+
         List<String> timeList = new ArrayList<>();
         timeList.add(startTime.toString("yyyy-MM-dd"));
         //用第三个变量来记录开始时间
@@ -85,40 +91,55 @@ public class ModelProcessor {
             timeList.add(startTimeTmp.toString("yyyy-MM-dd"));
         }
         //kylin
-        if (startTime.compareTo(startOfDay.minusDays(7)) == 1 && endTime.compareTo(startOfDay) >= 0) {
-            //按一天一天来处理
-            for (String date : timeList) {
+        //计算1日前的2留，2日前的3留
+        HashMap<DateTime,Integer> computeMap = new HashMap<>();
+        if (endTime.compareTo(startOfDay) == 0 && startTime.compareTo(startOfDay.minusDays(7)) == 1  ) {
+            List<Integer> yet = Arrays.asList(1,2,3,4,5,6);
+            List<Integer> ret = Arrays.asList(2,3,4,5,6,7);
+            if(valuesList.containsAll(yet) || valuesList.containsAll(ret)){
                 DateTime today = new DateTime().withTimeAtStartOfDay();
                 switch (metricName) {
+                    case "complex_yet_pay_nuv":
+                        metric = new OrderYetPayNuv(startDate,endDate, 0);
+                        break;
+                    case "complex_nu_yet_pay_amount":
+                        metric = new OrderNuYetPayAmount(startDate,endDate, 0);
+                        break;
                     case "complex_retention_uv":
-                        metric = new LoginRetentionUv(date, valuesList);
+                        metric = new LoginRetentionUv(startDate,endTime);
                         break;
                     case "complex_first_pay_retention_nuv":
-                        metric = new LoginFirstPayRetentionNuv(date, valuesList);
+                        metric = new LoginFirstPayRetentionNuv(startDate,endTime);
                         break;
                     case "complex_first_pay_retention_uv":
-                        metric = new LoginFirstPayRetentionUv(date, valuesList);
+                        metric = new LoginFirstPayRetentionUv(startDate,endTime);
                         break;
-                    case "complex_yet_pay_nuv":
-                        if (valuesList == null) {
-                            metric = new OrderYetPayNuv(date, today.toString("yyyy-MM-dd"), 0);
-                            buildSql(metric);
-                        } else {
-
-                        }
                 }
+                buildSql(metric,KYLIN);
             }
+
+
+
         }
 
     }
 
-    public void buildSql(Metric metric) throws Exception {
+    public void buildSql(Metric metric,DaoType type) throws Exception {
         metricNameLists.add(metric.getName());
         String time = granularity == null ? "" : granularity;
         if(metric.getFuction(MYSQL) != null && !time.equals("hour") && time.equals("minute")){
             sqlList.add(Pair.of(MYSQL,build(new MysqlParser(model,metric))));
         }
-        //TODO 代码写到这里了  8:25
+
+        if(longMetric.contains(metric.getName())){
+            //startTime大于当前日期(startOfDay-7) 且 endTime大于startOfDay则查ky实时数据
+            if(type.equals(KYLIN)){
+                sqlList.add(Pair.of(KYLIN,build(new KylinParser(model,metric))));
+            }
+        }
+
+
+
 
     }
 

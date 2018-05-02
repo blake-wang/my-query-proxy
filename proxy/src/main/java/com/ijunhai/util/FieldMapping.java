@@ -69,8 +69,6 @@ public class FieldMapping {
     public static String TIME_COLUMN = "server_date_day";
 
 
-
-
     public static String getTimeColumn(String time) {
         return timeMap.get(time);
     }
@@ -79,5 +77,15 @@ public class FieldMapping {
         return mysqlMap.get(key);
     }
 
-
+    public static String getKylin(String key, String tableName) {
+        String field = "";
+        if (tableName.equals(DALANLOGIN) || tableName.equals(HAIWAILOGIN) || tableName.equals(AGENTLOGIN)) {
+            field = loginMap.get(key);
+        } else if (tableName.equals(DALANORDER) || tableName.equals(HAIWAIORDER)) {
+            field = orderMapA.get(key);
+        } else if (tableName.equals(AGENTORDER)) {
+            field = orderMapB.get(key);
+        }
+        return field;
+    }
 }
