@@ -4,21 +4,18 @@ import com.ijunhai.dao.DaoType;
 import com.ijunhai.dao.MysqlDao;
 import com.ijunhai.dao.ParallelDao;
 import com.ijunhai.model.metrics.*;
-import com.ijunhai.model.parsers.KylinParser;
-import com.ijunhai.model.parsers.MysqlParser;
-import com.ijunhai.model.parsers.ResultParser;
-import com.ijunhai.model.parsers.SqlParser;
+import com.ijunhai.model.parsers.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.DateTime;
 import org.joda.time.Days;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
+import java.sql.ResultSet;
 import java.util.*;
 
 import static com.ijunhai.constant.ProxyConstants.longMetric;
-import static com.ijunhai.dao.DaoType.KYLIN;
-import static com.ijunhai.dao.DaoType.MYSQL;
+import static com.ijunhai.dao.DaoType.*;
 
 public class ModelProcessor {
     private MysqlDao mysqlConn = MysqlDao.getInstance();
@@ -32,7 +29,8 @@ public class ModelProcessor {
     private DateTime startTime;
     private DateTime endTime;
     private DateTime startOfDay;
-
+    public static DateTimeFormatter formatA = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
+    public static DateTimeFormatter formatB = DateTimeFormat.forPattern("yyyy-MM-dd");
 
     public ModelProcessor(QueryModel model) {
         this.granularity = model.getGranularity();
@@ -67,9 +65,16 @@ public class ModelProcessor {
                 complexMetric(metric);
                 continue;
             }
+            buildSql(metric, UNKNOW);
         }
 
-        return null;
+        List<ResultSet> ResultList = conn.execQuery(sqlList);
+        //遍历所有resultSet
+        //所有维度值加入finalDimensionMap Map<String,Map<String,String>>，key为value整条md5
+        //所有指标值加入finalMetricMap Map<String,List<Map<String,String>>>,key和finalDimensionMap的key一样
+        resultParser.resultSetParse(metricNameLists,ResultList);
+        //合并相同的finalDemensionMap的key，同时合并对应key的finalMetricMap的所有相同的value值
+        return resultParser.finalParse(model);
     }
 
     public void complexMetric(Metric metric) throws Exception {
@@ -173,6 +178,24 @@ public class ModelProcessor {
             //startTime大于当前日期(startOfDay-7) 且 endTime大于startOfDay则查ky实时数据
             if (type.equals(KYLIN)) {
                 sqlList.add(Pair.of(KYLIN, build(new KylinParser(model, metric))));
+            } else {
+                sqlList.add(Pair.of(GP, build(new GPParser(model, metric))));
+            }
+        } else {
+            //其他指标
+            //startTime大于startOfDay实时ky表，endTime小于startOfDay历史GP数据，否则两块合并
+            if (endTime.compareTo(startOfDay) == -1) {
+                sqlList.add(Pair.of(GP, build(new GPParser(model, metric))));
+            } else if (startTime.compareTo(startOfDay) >= 0) {
+                sqlList.add(Pair.of(KYLIN, build(new KylinParser(model, metric))));
+            } else {
+                SqlParser gp = new GPParser(model, metric);
+                gp.setEndTime(startOfDay.minusDays(1));
+                sqlList.add(Pair.of(GP, build(gp)));
+
+                SqlParser ky = new KylinParser(model, metric);
+                ky.setStartTime(startOfDay);
+                sqlList.add(Pair.of(KYLIN, build(ky)));
             }
         }
 
@@ -180,13 +203,17 @@ public class ModelProcessor {
     }
 
     private String build(SqlParser sqlParser) throws Exception {
+        //第一步先构建每个段的sql语句
         sqlParser.build();
-        String sql = sqlParser.getSelectSQL() + sqlParser.getTableName() + sqlParser.getWhereSQL() + sqlParser.getGroupBySql();
+        //第二步将构建好的sql语句段在合并起来
+        String sql =
+                sqlParser.getSelectSQL() + sqlParser.getTableName()
+                        + sqlParser.getWhereSQL() + sqlParser.getGroupBySql();
         //添加大蓝海外数据
-        String sql1 = sql;
-        if (sqlParser.getTableName().contains("rpt") && !sqlParser.getTableName().contains("import")) {
-            addDLHW(Pair.of(sqlParser.getTableName(), sql1));
-        }
+//        String sql1 = sql;
+//        if (sqlParser.getTableName().contains("rpt") && !sqlParser.getTableName().contains("import")) {
+//            addDLHW(Pair.of(sqlParser.getTableName(), sql1));
+//        }
         return sql;
 
     }

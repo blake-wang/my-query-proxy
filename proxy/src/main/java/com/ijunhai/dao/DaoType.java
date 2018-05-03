@@ -1,5 +1,5 @@
 package com.ijunhai.dao;
 
 public enum DaoType {
-    MYSQL, KYLIN, GP
+    MYSQL, KYLIN, GP,UNKNOW
 }

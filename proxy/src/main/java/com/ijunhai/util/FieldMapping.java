@@ -88,4 +88,8 @@ public class FieldMapping {
         }
         return field;
     }
+
+    public static String getGP(String key) {
+        return gpMap.get(key);
+    }
 }
