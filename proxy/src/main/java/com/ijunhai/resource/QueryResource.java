@@ -23,7 +23,7 @@ public class QueryResource {
         try {
             QueryModel model = JSON_MAPPER.readValue(modelStr, QueryModel.class);
             ModelProcessor modelProcessor = new ModelProcessor(model);
-            modelProcessor.process();
+//            modelProcessor.process();
         } catch (IOException e) {
             e.printStackTrace();
         }

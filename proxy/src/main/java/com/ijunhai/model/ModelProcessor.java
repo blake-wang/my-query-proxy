@@ -72,7 +72,7 @@ public class ModelProcessor {
         //遍历所有resultSet
         //所有维度值加入finalDimensionMap Map<String,Map<String,String>>，key为value整条md5
         //所有指标值加入finalMetricMap Map<String,List<Map<String,String>>>,key和finalDimensionMap的key一样
-        resultParser.resultSetParse(metricNameLists,ResultList);
+        resultParser.resultSetParse(metricNameLists, ResultList);
         //合并相同的finalDemensionMap的key，同时合并对应key的finalMetricMap的所有相同的value值
         return resultParser.finalParse(model);
     }

@@ -167,8 +167,6 @@ public class ResultParser {
                 result = result.subList(0, lm);
             }
         }
-
-
         return result;
     }
 }
