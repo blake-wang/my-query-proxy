@@ -132,10 +132,43 @@ public class ResultParser {
         String granularity = model.getGranularity();
         List<Metric> metricList = model.getMetrics();
         List<String> orderByList = model.getOrderByFields();
-        String limit = model.getLimit() == null ? "2000":model.getLimit();
+        String limit = model.getLimit() == null ? "2000" : model.getLimit();
         //根据granularity(默认),orderByList(指定)给finalDimensionMap的值排序
-        //TODO  2018-05-03  8：00   写到这里了
 
-        return null;
+        DimensionComparator bvc = new DimensionComparator(finalMetricMap, finalDimensionMap, granularity, orderByList);
+        Map<String, Map<String, String>> keyDimensionTreeMap = new TreeMap<>(bvc);
+        keyDimensionTreeMap.putAll(finalDimensionMap);
+
+        List<Map<String, String>> result = new ArrayList<>();
+        Set<Map.Entry<String, Map<String, String>>> set = keyDimensionTreeMap.entrySet();
+        for (Map.Entry<String, Map<String, String>> i : set) {
+            Map<String, String> resultMap = new HashMap<>();
+            resultMap.putAll(i.getValue());
+
+            finalMetricMap.get(i.getKey()).forEach(metricMap -> metricMap.forEach(resultMap::put));
+            for (Metric metric : metricList) {
+                String value = resultMap.get(metric.getName());
+                if (!metric.getName().contains("retention") && !metric.getName().contains("yet")) {
+                    if ((!resultMap.keySet().contains(metric.getName()) || StringUtils.isEmpty(value))) {
+                        resultMap.put(metric.getName(), "");
+                        resultMap.put(metric.getName() + "_revision", "0");
+                    } else {
+                        resultMap.put(metric.getName(), metric.format(value));
+                    }
+                }
+            }
+            result.add(resultMap);
+        }
+
+        //返回要求获取的条目
+        if (!limit.isEmpty()) {
+            int lm = Integer.parseInt(limit);
+            if (result.size() > lm) {
+                result = result.subList(0, lm);
+            }
+        }
+
+
+        return result;
     }
 }
