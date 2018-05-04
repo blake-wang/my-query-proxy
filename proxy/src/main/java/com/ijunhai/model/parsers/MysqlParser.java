@@ -95,6 +95,7 @@ public class MysqlParser implements SqlParser {
                 groupBySql.append(FieldMapping.getMysql(returnDemension.toUpperCase())).append(",");
             }
         }
+        //这个granularity如果不等于空，就给追加date
         if (!granularity.isEmpty()) {
             groupBySql.append(" date ");
             selectSql.append(" date ");

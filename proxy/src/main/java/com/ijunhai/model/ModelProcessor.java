@@ -19,6 +19,7 @@ import static com.ijunhai.dao.DaoType.*;
 
 public class ModelProcessor {
     private MysqlDao mysqlConn = MysqlDao.getInstance();
+    //用来记录要查询的sql语句以及对应的数据库
     private List<Pair<DaoType, String>> sqlList;
     private String granularity;
     private List<Metric> metricList;
@@ -65,13 +66,18 @@ public class ModelProcessor {
                 complexMetric(metric);
                 continue;
             }
+            //不管是不是complex指标，最后走的都是buildSql方法
             buildSql(metric, UNKNOW);
         }
 
+        //这里进行真正的查询，并返回结果集的集合
         List<ResultSet> ResultList = conn.execQuery(sqlList);
         //遍历所有resultSet
         //所有维度值加入finalDimensionMap Map<String,Map<String,String>>，key为value整条md5
         //所有指标值加入finalMetricMap Map<String,List<Map<String,String>>>,key和finalDimensionMap的key一样
+
+
+        //下面这两步都是对结果集的处理
         resultParser.resultSetParse(metricNameLists, ResultList);
         //合并相同的finalDemensionMap的key，同时合并对应key的finalMetricMap的所有相同的value值
         return resultParser.finalParse(model);
@@ -167,15 +173,20 @@ public class ModelProcessor {
 
     }
 
+    //先根据不同的metric类，构建不同的sql语句
+    //sqlList里面装的是查询的数据库以及对应的sql语句
     public void buildSql(Metric metric, DaoType type) throws Exception {
         metricNameLists.add(metric.getName());
         String time = granularity == null ? "" : granularity;
+        //判断查询语句，如果不为null，并且查询粒度不为hour和minute，就去查询mysql
         if (metric.getFuction(MYSQL) != null && !time.equals("hour") && time.equals("minute")) {
+            //这里比较重要，也要看明白，build方法返回的是一条sql语句
             sqlList.add(Pair.of(MYSQL, build(new MysqlParser(model, metric))));
         }
 
         if (longMetric.contains(metric.getName())) {
             //startTime大于当前日期(startOfDay-7) 且 endTime大于startOfDay则查ky实时数据
+            //这里用type.equals方法判断DaoType ，正确吗
             if (type.equals(KYLIN)) {
                 sqlList.add(Pair.of(KYLIN, build(new KylinParser(model, metric))));
             } else {
@@ -202,6 +213,7 @@ public class ModelProcessor {
 
     }
 
+    //这个方法就开是构建sql语句了，根据具体传进来的SqlParser是哪个，就调用哪个的build方法
     private String build(SqlParser sqlParser) throws Exception {
         //第一步先构建每个段的sql语句
         sqlParser.build();

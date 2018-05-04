@@ -46,13 +46,14 @@ public class ParallelDao {
         List<ResultSet> resultSets = new ArrayList<>();
 
         boolean isFinish = true;
-        //遍历检查每个任务是否执行完
+        //遍历检查每个任务是否执行完，当所有的都执行完了，才取出结果集
         for (Future<ResultSet> future : futures) {
             if (!future.isDone()) {
                 isFinish = false;
                 future.cancel(true);
             }
         }
+        //到这里是所有的都执行完了，遍历取出结果集
         if (isFinish) {
             for (Future<ResultSet> future : futures) {
                 try {
@@ -85,6 +86,7 @@ public class ParallelDao {
             try {
                 switch (sql.getLeft()) {
                     //JDK1.8新特性，可以匹配枚举
+                    //这里根据不同的数据库，查询对应的sql语句
                     case KYLIN:
                         resultSet = kylinDao.execuQuery(sql.getRight());
                         break;
