@@ -22,48 +22,68 @@ public class ModelProcessor {
     //用来记录要查询的sql语句以及对应的数据库
     private List<Pair<DaoType, String>> sqlList;
     private String granularity;
+    //指标Metric类的list
     private List<Metric> metricList;
     private ResultParser resultParser;
     private ParallelDao conn;
     private QueryModel model;
+    //指标Metric名称的list
     private List<String> metricNameLists;
     private DateTime startTime;
     private DateTime endTime;
+    //startOfDay :2018-05-04T00:00:00.000+08:00
     private DateTime startOfDay;
     public static DateTimeFormatter formatA = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
     public static DateTimeFormatter formatB = DateTimeFormat.forPattern("yyyy-MM-dd");
 
     public ModelProcessor(QueryModel model) {
+        //时间粒度:day
         this.granularity = model.getGranularity();
+        //指标集合:active_nuv,active_uv,active_ouv,pay_uv,pay_amount,pay_nuv,nu_pay_amount,first_pay_uv,first_pay_amount
         this.metricList = model.getMetrics();
+        //获取并行查询的对象
         this.conn = ParallelDao.getInstance();
+        //对查询结果进行解析的对象
         this.resultParser = new ResultParser();
+        //json参数对象
         this.model = model;
+        //查询指标以及查询语句的list
         this.sqlList = new ArrayList<>();
+        //查询指标名称集合
         this.metricNameLists = new ArrayList<>();
+        //获取当天执行的时间
         this.startOfDay = new DateTime().withTimeAtStartOfDay();
-
-        //传入参数的处理
+        //查询的条件：startDay，endDay，gameId，osType，channelId,gameChannelId
         Condition conditions = model.getConditions();
+        //获取查询时间范围的开始时间
         String start = conditions.getStart().trim();
+        //获取查询时间范围的结束时间
         String end = conditions.getEnd().trim();
+        //判断传过来的时间，是哪种格式
         if (start.trim().contains(" ")) {
-            DateTimeFormatter formatA = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
+            //startTime:2018-05-01T12:23:44.000+08:00
             startTime = DateTime.parse(start, formatA);
+            //endTime:2018-05-02T14:33:46.000+08:00
             endTime = DateTime.parse(end, formatA);
         } else {
-            DateTimeFormatter formatB = DateTimeFormat.forPattern("yyyy-MM-dd");
+            //startTime :2018-05-01T00:00:00.000+08:00
             startTime = DateTime.parse(start, formatB);
+            //endTime :2018-05-02T00:00:00.000+08:00
             endTime = DateTime.parse(end, formatB);
         }
 
     }
 
     public List<Map<String, String>> process() throws Exception {
+
+        //遍历指标类的list，拿到每一个Metric的对象
         for (Metric metric : metricList) {
+            //拿到当前要计算的指标的名称
             String metricName = metric.getName();
+            //这里先对complex指标进行计算
             if (metricName.contains("complex")) {
                 complexMetric(metric);
+                //complex指标计算里面，已经执行了buildSql方法，因此完了用continue
                 continue;
             }
             //不管是不是complex指标，最后走的都是buildSql方法
@@ -176,6 +196,7 @@ public class ModelProcessor {
     //先根据不同的metric类，构建不同的sql语句
     //sqlList里面装的是查询的数据库以及对应的sql语句
     public void buildSql(Metric metric, DaoType type) throws Exception {
+        //拿到当前计算的指标的名称，存入list
         metricNameLists.add(metric.getName());
         String time = granularity == null ? "" : granularity;
         //判断查询语句，如果不为null，并且查询粒度不为hour和minute，就去查询mysql

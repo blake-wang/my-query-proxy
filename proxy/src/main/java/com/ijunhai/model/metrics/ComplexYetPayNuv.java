@@ -1,4 +1,25 @@
 package com.ijunhai.model.metrics;
 
-public class ComplexYetPayNuv {
+import com.ijunhai.dao.DaoType;
+
+public class ComplexYetPayNuv implements Metric {
+    @Override
+    public String getFuction(DaoType queryType) {
+        return null;
+    }
+
+    @Override
+    public String getConditions(DaoType queryType) {
+        return null;
+    }
+
+    @Override
+    public String getTableName(DaoType queryType) {
+        return null;
+    }
+
+    @Override
+    public String getName() {
+        return null;
+    }
 }

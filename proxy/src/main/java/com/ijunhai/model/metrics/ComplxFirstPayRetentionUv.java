@@ -1,4 +1,25 @@
 package com.ijunhai.model.metrics;
 
-public class ComplxFirstPayRetentionUv {
+import com.ijunhai.dao.DaoType;
+
+public class ComplxFirstPayRetentionUv implements Metric {
+    @Override
+    public String getFuction(DaoType queryType) {
+        return null;
+    }
+
+    @Override
+    public String getConditions(DaoType queryType) {
+        return null;
+    }
+
+    @Override
+    public String getTableName(DaoType queryType) {
+        return null;
+    }
+
+    @Override
+    public String getName() {
+        return null;
+    }
 }

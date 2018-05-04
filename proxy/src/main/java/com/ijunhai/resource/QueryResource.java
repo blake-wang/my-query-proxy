@@ -24,9 +24,13 @@ public class QueryResource {
     @Path("query")
     public String queryPost(String modelStr) throws Exception {
         try {
+            //接收查询请求，将json格式的参数解析出来，生成QueryModel Bean
             QueryModel model = JSON_MAPPER.readValue(modelStr, QueryModel.class);
+            //创建ModelProcessor对象，构造函数传入model对象
             ModelProcessor modelProcessor = new ModelProcessor(model);
+            //执行查询
             List resultList = modelProcessor.process();
+            //将resultList这个计算结果，生成一个json字符串返回
             return JSON_MAPPER.writeValueAsString(resultList);
         } catch (IOException e) {
             throw new Exceptions.JsonFormatException(e);

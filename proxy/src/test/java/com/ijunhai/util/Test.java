@@ -13,8 +13,8 @@ public class Test {
     public static DateTime startOfDay;
 
     public static void main(String[] args) {
-        String start = "2018-05-01 12:23:44";
-        String end = "2018-05-02 14:33:46";
+        String start = "2018-05-01";
+        String end = "2018-05-02";
         startOfDay = new DateTime().withTimeAtStartOfDay();
         if (start.contains(" ") && end.contains(" ")) {
             startTime = DateTime.parse(start, formatA);
