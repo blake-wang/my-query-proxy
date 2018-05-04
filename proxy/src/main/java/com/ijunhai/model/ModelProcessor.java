@@ -198,9 +198,10 @@ public class ModelProcessor {
     public void buildSql(Metric metric, DaoType type) throws Exception {
         //拿到当前计算的指标的名称，存入list
         metricNameLists.add(metric.getName());
+        //granularity是否为null，如如果为null，默认赋值给""
         String time = granularity == null ? "" : granularity;
-        //判断查询语句，如果不为null，并且查询粒度不为hour和minute，就去查询mysql
-        if (metric.getFuction(MYSQL) != null && !time.equals("hour") && time.equals("minute")) {
+        //mysql这里这一步，是每一次查询都需要的，主要是手工录入的数据，必不可少
+        if (metric.getFuction(MYSQL) != null && !time.equals("hour") && time.equals("minute")) {//
             //这里比较重要，也要看明白，build方法返回的是一条sql语句
             sqlList.add(Pair.of(MYSQL, build(new MysqlParser(model, metric))));
         }
@@ -216,15 +217,27 @@ public class ModelProcessor {
         } else {
             //其他指标
             //startTime大于startOfDay实时ky表，endTime小于startOfDay历史GP数据，否则两块合并
+            //这里是判断查询的时间范围，endTime是否小于查询当天时间
+            //三种情况：
+            //1、endTime < startOfDay   -->查询GP
+            //2、startTime >= startOfDay     -->查询kylin
+            //3、startTime < startOfDay =endTime   -->kylin和GP
+            //第1种情况，查的都是历史数据，只查GP；
+            //第2种和第3种情况，有查询今天的数据，今天的数据查询kylin，昨天以前的数据查询gp
             if (endTime.compareTo(startOfDay) == -1) {
                 sqlList.add(Pair.of(GP, build(new GPParser(model, metric))));
             } else if (startTime.compareTo(startOfDay) >= 0) {
+                //其实查询的就是今天，这个数据全部查询KYLIN
                 sqlList.add(Pair.of(KYLIN, build(new KylinParser(model, metric))));
             } else {
+                //包含今天和今天以前
+
+                //昨天以及以前的数据，查询GP
                 SqlParser gp = new GPParser(model, metric);
                 gp.setEndTime(startOfDay.minusDays(1));
                 sqlList.add(Pair.of(GP, build(gp)));
 
+                //今天的数据查询KYLIN
                 SqlParser ky = new KylinParser(model, metric);
                 ky.setStartTime(startOfDay);
                 sqlList.add(Pair.of(KYLIN, build(ky)));
@@ -234,6 +247,7 @@ public class ModelProcessor {
 
     }
 
+    //SqlParser有三个 ： MysqlParser,KylinParser,GPParser
     //这个方法就开是构建sql语句了，根据具体传进来的SqlParser是哪个，就调用哪个的build方法
     private String build(SqlParser sqlParser) throws Exception {
         //第一步先构建每个段的sql语句

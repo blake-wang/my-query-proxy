@@ -38,6 +38,7 @@ public class MysqlParser implements SqlParser {
         this.returnDemensionList = model.getReturnDemensions();
         String start = conditions.getStart().trim();
         String end = conditions.getEnd().trim();
+        //这里获取的是MYSQL的tablename
         tableName = metric.getTableName(MYSQL);
         if (start.contains(" ")) {
             DateTimeFormatter formatA = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
@@ -85,6 +86,7 @@ public class MysqlParser implements SqlParser {
         StringBuilder groupBySql = new StringBuilder();
         groupBySql.append(" group by ");
         selectSql.append("select ").append(metric.getFuction(MYSQL)).append(",");
+        //返回字段列表，目前看一般都为空
         if (!returnDemensionList.isEmpty()) {
             for (String returnDemension : returnDemensionList) {
                 if (StringUtils.isNoneBlank(FieldMapping.getTimeColumn(returnDemension.toUpperCase()))) {

@@ -5,6 +5,8 @@ import com.ijunhai.model.metrics.Metric;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Days;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -13,12 +15,14 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.*;
 
+import static com.ijunhai.model.ModelProcessor.formatA;
 import static com.ijunhai.model.ModelProcessor.formatB;
 
 public class ResultParser {
     private Map<String, List<Map<String, String>>> finalMetricMap;
     private Map<String, Map<String, String>> finalDimensionMap;
     private static MessageDigest messageDigest;
+    private DateTimeFormatter format = DateTimeFormat.forPattern("yyyy-MM-dd");
 
     static {
         try {
@@ -44,19 +48,27 @@ public class ResultParser {
                 }
                 Map<String, String> dimensionMap = new TreeMap<>();
                 Map<String, String> metricMap = new HashMap<>();
+                int flag = 0;
+
                 //遍历每一行的每个字段
+                //因为数据库resultSet中的字段编号是从1开始的，所以这里i=1方便一点
                 for (int i = 1; i <= columnCount; i++) {
+                    //获取字段名
                     String key = metaData.getColumnLabel(i);
+                    //获取字段值
                     String value = resultSet.getString(i);
                     if (value == null) {
                         continue;
                     }
+                    //这里为什么要对字段名进行判断呢？
                     if (key.equals("date") && !value.contains("-")) {
                         StringBuilder sb = new StringBuilder();
                         sb.append(value);
+                        //这里是将20180401这个时间变成2018-04-01
                         sb.insert(6, "-").insert(4, "-");
                         value = sb.toString();
                     }
+                    //这里为什么要做判断？
                     if ((key.toLowerCase().contains("ret")
                             || key.toLowerCase().contains("yet")
                             || metricNameLists.contains(key.toLowerCase())) && !key.equals("_m")) {
@@ -64,15 +76,28 @@ public class ResultParser {
                         if (!metricMap.containsKey(key.toLowerCase() + "_revision")) {
                             metricMap.put(key.toLowerCase() + "_revision", "0");
                         }
-                    } else if (key.contains("_m")) {
+                    } else if (key.contains("_m")) {//这里为什么要做这个判断？
                         key = key.substring(0, key.length() - 2);
                         metricMap.put(key.toLowerCase(), value.split("\\.")[0]);
                         metricMap.put(key.toLowerCase() + "_revision", value.split("\\.")[0]);
+
                     } else {
+                        try {
+                            if(key.toLowerCase().equals("date")){
+                                DateTime.parse(value,format);
+                            }
+                        } catch (Exception e) {
+                            flag = 1;
+                            break;
+                        }
                         dimensionMap.put(key.toLowerCase(), value);
                     }
+                }//遍历每一行的每个字段结束
+
+                if(flag==1){
+
                 }
-                //遍历每一行的每个字段结束
+
                 String key = Base64.getEncoder().encodeToString(messageDigest.digest(dimensionMap.toString().getBytes()));
                 if (!finalDimensionMap.containsKey(key)) {
                     finalDimensionMap.put(key, dimensionMap);
