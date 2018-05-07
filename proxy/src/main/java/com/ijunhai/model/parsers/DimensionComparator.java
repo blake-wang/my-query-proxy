@@ -38,8 +38,9 @@ public class DimensionComparator implements Comparator<String> {
 //    }
 
 
+    //Comparator<String>，这里的泛型声明的是String，表示传进来比较的是String类型，compare的两个参数，就是要进行比较的String
     public int compare(String a, String b) {
-        //指定orderByList排序
+        //指定orderByList排序，如果选择日期的话，比如 day desc
         if (orderByList.size() != 0 && orderByList != null) {
             int i = 0;
             num = compareTo(a, b, i);
@@ -68,9 +69,12 @@ public class DimensionComparator implements Comparator<String> {
     }
 
 
-    //这里用了递归
+    //第二个参数i，只是为了标记orderByList的角标
     public int compareTo(String a, String b, int i) {
+
+        //取出第一个day desc 中的date
         String[] split = orderByList.get(i).split(" ", 2);
+        //day
         String orderByKey = split[0].toLowerCase();
 
         if (!orderByKey.equals("day") && !orderByKey.equals("hour") && !orderByKey.equals("minute")) {
@@ -135,19 +139,26 @@ public class DimensionComparator implements Comparator<String> {
             }
 
 
-        }else if(orderByKey.equals("day") || orderByKey.equals("hour") || orderByKey.equals("minute")){
+        }else if(orderByKey.equals("day") || orderByKey.equals("hour") || orderByKey.equals("minute")){//根据day进行排序
+            //取出维度集合中的date:2018-05-04
             DateTime timeA = DateTime.parse(keyDimensionHashMap.get(a).get("date"), format);
+            //取出维度集合中的date:2018-05-04
             DateTime timeB = DateTime.parse(keyDimensionHashMap.get(b).get("date"), format);
+            //<<这里默认就是按date asc进行排序>>，如果date相等，继续按hour排序，如果hour相等，继续按minute排序
             if (split.length == 2 && split[1].equals("asc") || split.length == 1) {
                 if (timeA.compareTo(timeB) < 0) {
+                    //compareTo返回-1，timeA<timeB，但是返回-1，正序排序 timeA,timeB
                     num = -1;
                 } else if (timeA.compareTo(timeB) > 0) {
+                    //compareTO返回1,timeA>timeB，但是返回1，正序排序 timeA,timeB
                     num = 1;
-                } else if (timeA.compareTo(timeB) == 0 && orderByKey.equals("day") && i + 1 < orderByList.size()) {
+                } else if (timeA.compareTo(timeB) == 0 && orderByKey.equals("day") && i + 1 < orderByList.size()) {//当两条数据日期相等，时，递归调用，继续比较
+                    //如果这里只是day desc，则不会进入到这里，因为默认就是按day进行排序的
                     i++;
                     compareTo(a, b, i);
-                    //condition is hour or minute
+
                 } else if (timeA.compareTo(timeB) == 0 && (orderByKey.equals("hour") || orderByKey.equals("minute"))) {
+                    //当按date没有排出大小，继续找是否有hour或者minute，有就继续按hour或者minute排序
                     int hourA;
                     int hourB;
 
@@ -177,11 +188,13 @@ public class DimensionComparator implements Comparator<String> {
                     }
                 }
 
-                //desc
-            } else {
+
+            } else {//这里是按date desc排序，如果date相等，按hour排序，如果hour也相等，按minute排序
                 if (timeA.compareTo(timeB) < 0) {
+                    //compareTo返回-1，说明timeA<timeB ，但是num=1，因此是倒序排序，timeB,timeA
                     num = 1;
                 } else if (timeA.compareTo(timeB) > 0) {
+                    //compareTo返回1，说明timeA>timeB，但是num=-1，因此是倒序排序，timeB,timeA
                     num = -1;
                 } else if (timeA.compareTo(timeB) == 0 && i + 1 < orderByList.size()) {
                     i++;

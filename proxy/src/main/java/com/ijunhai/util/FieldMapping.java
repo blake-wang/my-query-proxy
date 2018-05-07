@@ -79,6 +79,7 @@ public class FieldMapping {
 
     public static String getKylin(String key, String tableName) {
         String field = "";
+        //这里为什么又要将表名分为三类
         if (tableName.equals(DALANLOGIN) || tableName.equals(HAIWAILOGIN) || tableName.equals(AGENTLOGIN)) {
             field = loginMap.get(key);
         } else if (tableName.equals(DALANORDER) || tableName.equals(HAIWAIORDER)) {

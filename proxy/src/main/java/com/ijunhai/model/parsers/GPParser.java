@@ -91,6 +91,8 @@ public class GPParser implements SqlParser {
         StringBuilder groupBySql = new StringBuilder();
         groupBySql.append(" group by ");
         selectSql.append("select ").append(metric.getFuction(GP)).append(",");
+        //group by 默认就是
+        //returnDemensionsList 的作用
         if (!returnDemensionsList.isEmpty()) {
             for (String returnDemension : returnDemensionsList) {
                 if (StringUtils.isNoneBlank(FieldMapping.getTimeColumn(returnDemension.toUpperCase()))) {
@@ -101,6 +103,7 @@ public class GPParser implements SqlParser {
                 groupBySql.append(FieldMapping.getGP(returnDemension.toUpperCase())).append(",");
             }
         }
+        //目前默认的是日表的形式，因此granularity的值默认就是date，
         if (!granularity.isEmpty()) {
             selectSql.append(" date ");
             groupBySql.append(" date ");

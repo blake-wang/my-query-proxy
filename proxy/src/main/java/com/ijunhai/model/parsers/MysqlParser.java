@@ -67,7 +67,7 @@ public class MysqlParser implements SqlParser {
 
     @Override
     public String getTableName() {
-        return " from "+ ProxyConstants.MYSQL_TABLENAME;
+        return " from " + ProxyConstants.MYSQL_TABLENAME;
     }
 
     @Override
@@ -97,19 +97,24 @@ public class MysqlParser implements SqlParser {
                 groupBySql.append(FieldMapping.getMysql(returnDemension.toUpperCase())).append(",");
             }
         }
-        //这个granularity如果不等于空，就给追加date
+        //granularity在第一次进来的时候，已经做过非null判断，如果是null，就给""
+        //因此这里再次判断，只要判断长度是否为0就行了
         if (!granularity.isEmpty()) {
+            //group by 后面如果有date字段，那select后面也需要date字段
             groupBySql.append(" date ");
             selectSql.append(" date ");
         }
+        //上一步在判断了granularity的长度后，如果掺入为0，则不会追加爱date字段，因此这里groupBySQL 就是""
         if (groupBySql.toString().trim().equals("group by")) {
             groupBySQL = "";
         } else {
+            //删除掉group by 最后面的,号
             if (groupBySql.charAt(groupBySql.length() - 1) == ',') {
                 groupBySql.deleteCharAt(groupBySql.length() - 1);
             }
             groupBySQL = groupBySql.toString();
         }
+        //删除掉select语句最后面的,号
         if (selectSql.charAt(selectSql.length() - 1) == ',') {
             selectSql.deleteCharAt(selectSql.length() - 1);
         }
@@ -117,11 +122,12 @@ public class MysqlParser implements SqlParser {
     }
 
     private void buildWhereSQL() {
+        //处理where语句，
         whereSQL = new StringBuffer();
         whereSQL.append(" where date between '").append(startTime.toString("yyyyMMdd"))
                 .append("' and '").append(endTime.toString("yyyyMMdd")).append("' ")
                 .append(conditionParse(conditions.getChannelId(), "channelId"))
-                .append(conditionParse(conditions.getChannelId(), "gameChannelId"))
+                .append(conditionParse(conditions.getGameChannelId(), "gameChannelId"))
                 .append(conditionParse(conditions.getOsType(), "osType"))
                 .append(conditionParse(conditions.getCompanyId(), "companyId"))
                 .append(conditionParse(conditions.getGameId(), "gameId"));
@@ -129,6 +135,7 @@ public class MysqlParser implements SqlParser {
 
     private String conditionParse(List list, String conditionName) {
         StringBuilder sb = new StringBuilder();
+        //这里判断一次是否有这些过滤的条件，如果没有就不添加了
         if (list != null && list.size() > 0) {
             sb.append(" and ");
             sb.append(FieldMapping.getMysql(conditionName.toUpperCase())).append(" in ('").append(list.get(0)).append("'");

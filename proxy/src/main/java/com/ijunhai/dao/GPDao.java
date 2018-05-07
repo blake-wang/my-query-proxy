@@ -44,6 +44,7 @@ public class GPDao {
         Connection conn = null;
         ResultSet resultSet = null;
         try {
+            //这里为什么用DataSource
             dataSource.getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             resultSet = pstmt.executeQuery();

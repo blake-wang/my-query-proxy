@@ -38,16 +38,22 @@ public class ResultParser {
     }
 
     public void resultSetParse(List<String> metricNameLists, List<ResultSet> ResultSets) throws SQLException {
+        //遍历每一个结果集
         for (ResultSet resultSet : ResultSets) {
             ResultSetMetaData metaData = resultSet.getMetaData();
             int columnCount = metaData.getColumnCount();
             Map<String, String> kylinMap = new HashMap<>();
+            //遍历结果集中的每一行
             while (resultSet.next()) {//遍历每一行
                 if (columnCount == 1 && StringUtils.isEmpty(resultSet.getString(1))) {
                     break;
                 }
+                //dimensionMap存放的是维度名称和值，date->2018-05-01
                 Map<String, String> dimensionMap = new TreeMap<>();
+                //metricMap存放的是指标字段名称和值，active_uv->4412
                 Map<String, String> metricMap = new HashMap<>();
+
+                //声明这个标记，是为了等下对异常日期做过滤
                 int flag = 0;
 
                 //遍历每一行的每个字段
@@ -60,7 +66,7 @@ public class ResultParser {
                     if (value == null) {
                         continue;
                     }
-                    //这里为什么要对字段名进行判断呢？
+                    //因为group by之后，select字段也会有group by的维度数据，因此这里是把date这个字段对应的值变成日期
                     if (key.equals("date") && !value.contains("-")) {
                         StringBuilder sb = new StringBuilder();
                         sb.append(value);
@@ -76,29 +82,35 @@ public class ResultParser {
                         if (!metricMap.containsKey(key.toLowerCase() + "_revision")) {
                             metricMap.put(key.toLowerCase() + "_revision", "0");
                         }
-                    } else if (key.contains("_m")) {//这里为什么要做这个判断？
+                    } else if (key.contains("_m")) {//这里是为了找出哪些指标字段是带_m的，找出来后，将这个指标名称替换为带_revision，比如active_uv_m替换为active_uv_revision
                         key = key.substring(0, key.length() - 2);
+                        //这里将从mysql中查出来的带_m的字段，拆成了两个，active_uv,active_uv_revision，并分别作为key存入metricMap,值是相同的值
                         metricMap.put(key.toLowerCase(), value.split("\\.")[0]);
                         metricMap.put(key.toLowerCase() + "_revision", value.split("\\.")[0]);
 
                     } else {
+                        //这里这个try抓异常，是因为如果出现2018-04-31这样的日期，
                         try {
-                            if(key.toLowerCase().equals("date")){
-                                DateTime.parse(value,format);
+                            if (key.toLowerCase().equals("date")) {
+                                DateTime.parse(value, format);
                             }
                         } catch (Exception e) {
                             flag = 1;
                             break;
                         }
+                        //便利后的日期信息，加入map
                         dimensionMap.put(key.toLowerCase(), value);
                     }
                 }//遍历每一行的每个字段结束
 
-                if(flag==1){
-
+                //当遇到异常日期值的时候，当前这条数据就跳过了，不处理
+                if (flag == 1) {
+                    continue;
                 }
 
+                //对整个dimensionMap进行Base64加密，生成key
                 String key = Base64.getEncoder().encodeToString(messageDigest.digest(dimensionMap.toString().getBytes()));
+                //用dimensionMap生成的key和dimensionMap作为value，存入finalDimensionMap中
                 if (!finalDimensionMap.containsKey(key)) {
                     finalDimensionMap.put(key, dimensionMap);
                 }
@@ -130,6 +142,8 @@ public class ResultParser {
                     }
 
                 } else {
+                    //如果不包含这个key，这个key就是刚才对整个dimensionMap进行Base64加密，生成的key，加入finalMetricMap
+                    //值为metricMap,此处的metricMap应该包含两个kv对,active_uv->4412,active_uv_revision->4412
                     if (!finalMetricMap.containsKey(key)) {
                         finalMetricMap.put(key, new ArrayList<>());
                         finalMetricMap.get(key).add(metricMap);
@@ -160,7 +174,9 @@ public class ResultParser {
         String limit = model.getLimit() == null ? "2000" : model.getLimit();
         //根据granularity(默认),orderByList(指定)给finalDimensionMap的值排序
 
+        //DimensionComparator里面定义了排序的规则
         DimensionComparator bvc = new DimensionComparator(finalMetricMap, finalDimensionMap, granularity, orderByList);
+        //
         Map<String, Map<String, String>> keyDimensionTreeMap = new TreeMap<>(bvc);
         keyDimensionTreeMap.putAll(finalDimensionMap);
 

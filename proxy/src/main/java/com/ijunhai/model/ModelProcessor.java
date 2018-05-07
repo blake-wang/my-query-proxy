@@ -76,7 +76,7 @@ public class ModelProcessor {
 
     public List<Map<String, String>> process() throws Exception {
 
-        //遍历指标类的list，拿到每一个Metric的对象
+        //遍历指标类的list，拿到每一个Metric的对象，根据每一个计算的指标对象，生成一个sqlList
         for (Metric metric : metricList) {
             //拿到当前要计算的指标的名称
             String metricName = metric.getName();
@@ -92,6 +92,8 @@ public class ModelProcessor {
 
         //这里进行真正的查询，并返回结果集的集合
         List<ResultSet> ResultList = conn.execQuery(sqlList);
+
+
         //遍历所有resultSet
         //所有维度值加入finalDimensionMap Map<String,Map<String,String>>，key为value整条md5
         //所有指标值加入finalMetricMap Map<String,List<Map<String,String>>>,key和finalDimensionMap的key一样
@@ -200,23 +202,28 @@ public class ModelProcessor {
         metricNameLists.add(metric.getName());
         //granularity是否为null，如如果为null，默认赋值给""
         String time = granularity == null ? "" : granularity;
-        //mysql这里这一步，是每一次查询都需要的，主要是手工录入的数据，必不可少
+        //第一步：查询手工录入的数据
+        //mysql这里这一步，是每一次查询都需要的，主要是手工录入的数据，必不可少 -->每天要查询的数据，都要将手工录入的计算进来
         if (metric.getFuction(MYSQL) != null && !time.equals("hour") && time.equals("minute")) {//
             //这里比较重要，也要看明白，build方法返回的是一条sql语句
             sqlList.add(Pair.of(MYSQL, build(new MysqlParser(model, metric))));
         }
 
+        //第二步：判断是否包含留存等相关指标
+        //"first_pay_retention_nuv", "first_pay_retention_uv", "retention_uv", "yet_pay_nuv", "nu_yet_pay_amount"
         if (longMetric.contains(metric.getName())) {
             //startTime大于当前日期(startOfDay-7) 且 endTime大于startOfDay则查ky实时数据
             //这里用type.equals方法判断DaoType ，正确吗
+            //
             if (type.equals(KYLIN)) {
                 sqlList.add(Pair.of(KYLIN, build(new KylinParser(model, metric))));
             } else {
+                //daoType : UNKNOW
                 sqlList.add(Pair.of(GP, build(new GPParser(model, metric))));
             }
         } else {
             //其他指标
-            //startTime大于startOfDay实时ky表，endTime小于startOfDay历史GP数据，否则两块合并
+            //startTime大于等于startOfDay实时ky表，endTime小于startOfDay历史GP数据，否则两块合并
             //这里是判断查询的时间范围，endTime是否小于查询当天时间
             //三种情况：
             //1、endTime < startOfDay   -->查询GP
@@ -225,6 +232,7 @@ public class ModelProcessor {
             //第1种情况，查的都是历史数据，只查GP；
             //第2种和第3种情况，有查询今天的数据，今天的数据查询kylin，昨天以前的数据查询gp
             if (endTime.compareTo(startOfDay) == -1) {
+                //其实查询的就是昨天以前的数据，全是历史数据，查询GP
                 sqlList.add(Pair.of(GP, build(new GPParser(model, metric))));
             } else if (startTime.compareTo(startOfDay) >= 0) {
                 //其实查询的就是今天，这个数据全部查询KYLIN
@@ -252,7 +260,7 @@ public class ModelProcessor {
     private String build(SqlParser sqlParser) throws Exception {
         //第一步先构建每个段的sql语句
         sqlParser.build();
-        //第二步将构建好的sql语句段在合并起来
+        //第二步将构建好的sql语句段在合并起来，一条完整的查询语句就拼起来了
         String sql =
                 sqlParser.getSelectSQL() + sqlParser.getTableName()
                         + sqlParser.getWhereSQL() + sqlParser.getGroupBySql();

@@ -63,22 +63,25 @@ public class KylinParser implements SqlParser {
 
     @Override
     public String getSelectSQL() {
-        return null;
+
+        return selectSQL;
     }
 
     @Override
     public String getTableName() {
-        return null;
+        return " from " + tableName;
     }
 
     @Override
     public String getWhereSQL() {
-        return null;
+
+        return whereSQL.toString();
     }
 
     @Override
     public String getGroupBySql() {
-        return null;
+
+        return groupBySQL;
     }
 
 
@@ -87,6 +90,7 @@ public class KylinParser implements SqlParser {
         StringBuffer groupBySql = new StringBuffer();
         groupBySql.append(" group by ");
         selectSql.append("select ").append(metric.getFuction(DaoType.KYLIN)).append(" , ");
+        //当有一个returnDemensions添加进来的时候，group by要追加，select语句也要追加
         if (!returnDemensionsList.isEmpty()) {
             for (String returnDemension : returnDemensionsList) {
                 if (StringUtils.isNoneBlank(FieldMapping.getTimeColumn(returnDemension.toUpperCase()))) {
@@ -97,6 +101,7 @@ public class KylinParser implements SqlParser {
                 groupBySql.append(FieldMapping.getKylin(returnDemension.toUpperCase(), tableName));
             }
         }
+        //表支持的查询粒度包括day，hour，minute
         if (!metric.getName().contains("retention") && !metric.getName().contains("yet")) {
             switch (granularity.toLowerCase()) {
                 case "day":

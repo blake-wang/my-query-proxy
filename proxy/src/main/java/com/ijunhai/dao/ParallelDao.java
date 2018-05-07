@@ -36,12 +36,15 @@ public class ParallelDao {
     }
 
     public List<ResultSet> execQuery(List<Pair<DaoType, String>> sqls) throws Exception {
-        //TODO  这个latch要理解一下
+        //这个CountDownLatch有什么用
         CountDownLatch latch = new CountDownLatch(sqls.size());
+        //为什么要在ResultSet外面包一层Future
         List<Future<ResultSet>> futures = new ArrayList<>();
+
         for (Pair<DaoType, String> sql : sqls) {
             futures.add(exec.submit(new ResultSetCallback(sql, latch)));
         }
+        //这个await方法有什么用？
         latch.await(DEFAULT_AWAIT_SECONDS, TimeUnit.SECONDS);
         List<ResultSet> resultSets = new ArrayList<>();
 
